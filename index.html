@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dahlstrom</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0f0d12;
+      --surface:   #1a1620;
+      --border:    #2e2638;
+      --purple:    #7c5cbf;
+      --purple-lt: #a487d4;
+      --red:       #bf5c6e;
+      --red-lt:    #d4879a;
+      --text:      #e8e0f0;
+      --muted:     #8a7fa0;
+      --gap:       2rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Noise overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.4;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15, 13, 18, 0.88);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      padding: 1.4rem 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.8rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: linear-gradient(120deg, var(--purple-lt), var(--red-lt));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    nav { display: flex; gap: 2.4rem; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.25s;
+    }
+    nav a:hover { color: var(--purple-lt); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 7rem 4rem 4rem;
+      position: relative;
+    }
+
+    .hero-tag {
+      font-size: 0.72rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 7vw, 6rem);
+      font-weight: 300;
+      line-height: 1.05;
+      max-width: 700px;
+      color: var(--text);
+    }
+
+    .hero h1 span {
+      color: var(--purple-lt);
+    }
+
+    .hero p {
+      margin-top: 1.8rem;
+      max-width: 420px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.75;
+    }
+
+    .hero-line {
+      position: absolute;
+      right: 4rem; top: 5rem;
+      width: 1px; height: 160px;
+      background: linear-gradient(to bottom, transparent, var(--border), transparent);
+    }
+
+    /* ── Section ── */
+    .section {
+      padding: 3rem 4rem 6rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 1.2rem;
+      margin-bottom: 2.8rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+
+    .section-header h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.6rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+
+    .section-header span {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--purple);
+    }
+
+    /* ── Projects grid ── */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+    }
+
+    /* ╔═══════════════════════════════════╗
+       ║  ADD A PROJECT:                   ║
+       ║  Copy one .project-card block,    ║
+       ║  change the img src, title,       ║
+       ║  tag and description. Done!       ║
+       ╚═══════════════════════════════════╝ */
+
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.35s cubic-bezier(.22,.68,0,1.2),
+                  border-color 0.3s,
+                  box-shadow 0.35s;
+    }
+
+    .project-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--purple);
+      box-shadow: 0 20px 60px rgba(124, 92, 191, 0.18),
+                  0 0 0 1px rgba(124, 92, 191, 0.25);
+    }
+
+    .project-card:hover .project-overlay {
+      opacity: 1;
+    }
+
+    .project-card:hover .project-img {
+      transform: scale(1.04);
+    }
+
+    .project-img-wrap {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      position: relative;
+      background: #130f1a;
+    }
+
+    .project-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.6s cubic-bezier(.22,.68,0,1.2);
+      /* Placeholder gradient shown when no image is set */
+      background: linear-gradient(135deg, #1e1629 0%, #2a1a2e 50%, #1a1222 100%);
+    }
+
+    .project-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg,
+        rgba(124,92,191,0.35) 0%,
+        rgba(191,92,110,0.25) 100%);
+      opacity: 0;
+      transition: opacity 0.35s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .project-overlay-icon {
+      width: 48px; height: 48px;
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 1.2rem;
+    }
+
+    .project-body {
+      padding: 1.4rem 1.6rem 1.6rem;
+    }
+
+    .project-tag {
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 0.55rem;
+    }
+
+    .project-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem;
+      font-weight: 400;
+      color: var(--text);
+      line-height: 1.3;
+      margin-bottom: 0.6rem;
+    }
+
+    .project-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .project-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1.2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .project-year {
+      font-size: 0.72rem;
+      color: var(--border);
+      letter-spacing: 0.1em;
+    }
+
+    .project-arrow {
+      font-size: 0.78rem;
+      color: var(--purple);
+      letter-spacing: 0.06em;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .project-card:hover .project-arrow {
+      color: var(--purple-lt);
+      transform: translateX(4px);
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.4rem 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+    }
+
+    footer .logo-sm {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--border);
+    }
+
+    /* ── Scroll-reveal animation ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.65s cubic-bezier(.22,.68,0,1),
+                  transform 0.65s cubic-bezier(.22,.68,0,1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* stagger delay for grid children */
+    .projects-grid .project-card:nth-child(2)  { transition-delay: 0.08s; }
+    .projects-grid .project-card:nth-child(3)  { transition-delay: 0.16s; }
+    .projects-grid .project-card:nth-child(4)  { transition-delay: 0.24s; }
+    .projects-grid .project-card:nth-child(5)  { transition-delay: 0.08s; }
+    .projects-grid .project-card:nth-child(6)  { transition-delay: 0.16s; }
+
+    /* ── Responsive ── */
+    @media (max-width: 820px) {
+      header { padding: 1.2rem 1.8rem; }
+      .hero, .section { padding-left: 1.8rem; padding-right: 1.8rem; }
+      .projects-grid { grid-template-columns: 1fr; }
+      footer { flex-direction: column; gap: 0.8rem; text-align: center; }
+      .hero-line { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">Dahlstrom</div>
+    <nav>
+      <a href="#projects">Projects</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <p class="hero-tag">Portfolio &amp; Creative Work</p>
+    <h1>Selected<br><span>Projects</span><br>&amp; Work</h1>
+    <p>A curated collection of projects spanning design, development, and creative direction.</p>
+    <div class="hero-line"></div>
+  </section>
+
+  <!-- ── Projects ── -->
+  <section class="section" id="projects">
+    <div class="section-header reveal">
+      <h2>Projects</h2>
+      <span>Work</span>
+    </div>
+
+    <div class="projects-grid">
+
+        <!-- ╔══════════════════════════════════════════╗
+         ║  PROJECT TEMPLATE — copy & paste below   ║
+         ╚══════════════════════════════════════════╝
+
+    <article class="project-card reveal">
+      <div class="project-img-wrap">
+        <img class="project-img" src="YOUR_IMAGE.jpg" alt="Project name" />
+        <div class="project-overlay">
+          <div class="project-overlay-icon">→</div>
+        </div>
+      </div>
+      <div class="project-body">
+        <p class="project-tag">Category</p>
+        <h3 class="project-title">Project Title</h3>
+        <p class="project-desc">Short description of the project and what it involved.</p>
+        <div class="project-footer">
+          <span class="project-year">2025</span>
+          <span class="project-arrow">View →</span>
+        </div>
+      </div>
+    </article>
+
+    -->
+        <!-- Project 1 -->
+        <a href="projects/whiskervanguard/index.html" style="text-decoration:none;">
+            <article class="project-card reveal">
+                <div class="project-img-wrap">
+                    <img class="project-img" src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80" alt="Brand Identity" />
+                    <div class="project-overlay">
+                        <div class="project-overlay-icon">→</div>
+                    </div>
+                </div>
+                <div class="project-body">
+                    <p class="project-tag">Branding</p>
+                    <h3 class="project-title">Brand Identity System</h3>
+                    <p class="project-desc">Complete visual identity for a modern studio — logotype, colour language, and print collateral.</p>
+                    <div class="project-footer">
+                        <span class="project-year">2025</span>
+                        <span class="project-arrow">View →</span>
+                    </div>
+                </div>
+            </article>
+        </a>
+
+        <!-- Project 2 -->
+        <a href="projects/brand-identity.html" style="text-decoration:none;">
+            <article class="project-card reveal">
+                <div class="project-img-wrap">
+                    <img class="project-img" src="https://images.unsplash.com/photo-1547658719-da2b51169166?w=800&q=80" alt="Web Design" />
+                    <div class="project-overlay">
+                        <div class="project-overlay-icon">→</div>
+                    </div>
+                </div>
+                <div class="project-body">
+                    <p class="project-tag">Web Design</p>
+                    <h3 class="project-title">Editorial Platform</h3>
+                    <p class="project-desc">Responsive editorial website with a focus on long-form reading and immersive typography.</p>
+                    <div class="project-footer">
+                        <span class="project-year">2024</span>
+                        <span class="project-arrow">View →</span>
+                    </div>
+                </div>
+            </article>
+        </a>
+
+        <!-- Project 3 -->
+        <a href="projects/brand-identity.html" style="text-decoration:none;">
+            <article class="project-card reveal">
+                <div class="project-img-wrap">
+                    <img class="project-img" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80" alt="Motion" />
+                    <div class="project-overlay">
+                        <div class="project-overlay-icon">→</div>
+                    </div>
+                </div>
+                <div class="project-body">
+                    <p class="project-tag">Motion</p>
+                    <h3 class="project-title">Motion Graphics Reel</h3>
+                    <p class="project-desc">A collection of motion design pieces created for product launches and social campaigns.</p>
+                    <div class="project-footer">
+                        <span class="project-year">2024</span>
+                        <span class="project-arrow">View →</span>
+                    </div>
+                </div>
+            </article>
+        </a>
+
+        <!-- Project 4 -->
+        <a href="projects/brand-identity.html" style="text-decoration:none;">
+            <article class="project-card reveal">
+                <div class="project-img-wrap">
+                    <img class="project-img" src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&q=80" alt="Development" />
+                    <div class="project-overlay">
+                        <div class="project-overlay-icon">→</div>
+                    </div>
+                </div>
+                <div class="project-body">
+                    <p class="project-tag">Development</p>
+                    <h3 class="project-title">Dashboard Application</h3>
+                    <p class="project-desc">Full-stack analytics dashboard built with real-time data visualisation and clean UX patterns.</p>
+                    <div class="project-footer">
+                        <span class="project-year">2024</span>
+                        <span class="project-arrow">View →</span>
+                    </div>
+                </div>
+            </article>
+        </a>
+
+    </div>
+  </section>
+
+  <!-- ── About ── -->
+  <section class="section" id="about" style="padding-top:0">
+    <div class="section-header reveal">
+      <h2>About</h2>
+      <span>Background</span>
+    </div>
+    <p class="reveal" style="max-width:580px;color:var(--muted);line-height:1.85;font-size:0.95rem;">
+      Dahlstrom is a creative studio focused on thoughtful design and purposeful digital experiences.
+      Every project starts with a clear idea and ends with something worth remembering.
+    </p>
+  </section>
+
+  <!-- ── Contact ── -->
+  <section class="section" id="contact" style="padding-top:0">
+    <div class="section-header reveal">
+      <h2>Contact</h2>
+      <span>Get in touch</span>
+    </div>
+    <p class="reveal" style="color:var(--muted);font-size:0.95rem;line-height:1.8;">
+      Interested in working together?<br>
+      Reach out at <a href="mailto:hello@dahlstrom.com" style="color:var(--purple-lt);text-decoration:none;border-bottom:1px solid var(--border);">hello@dahlstrom.com</a>
+    </p>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <span class="logo-sm">Dahlstrom</span>
+    <span>© 2025 — All rights reserved</span>
+  </footer>
+
+  <!-- ── Scroll reveal script ── -->
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
