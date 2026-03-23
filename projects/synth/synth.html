@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synth — Dahlstrom</title>
+  <link rel="stylesheet" href="synth.css" />
+</head>
+<body>
+
+  <!-- LEFT COLUMN — music terms -->
+  <div class="text-col text-col-left">
+    <div class="text-col-inner" id="left-col"></div>
+  </div>
+
+  <!-- RIGHT COLUMN — definitions -->
+  <div class="text-col text-col-right">
+    <div class="text-col-inner" id="right-col"></div>
+  </div>
+
+  <div class="site-wrapper">
+
+    <!-- Header -->
+    <header>
+      <div class="logo">Dahlstrom</div>
+      <a href="../../index.html" class="back-link">&#8592; Back</a>
+    </header>
+
+    <!-- Main -->
+    <main>
+
+      <!-- Top label row -->
+      <div class="label-row">
+        <div class="axis-label">Reverb &#8592; X-Axis &#8594; Dry</div>
+        <div class="axis-label" style="flex-direction:row-reverse;">Pitch &#8593; Y-Axis &#8595; Bass</div>
+      </div>
+
+      <!-- Theremin box -->
+      <div class="theremin-wrap">
+        <div class="theremin-box" id="theremin">
+          <canvas id="viz-canvas"></canvas>
+          <div class="crosshair-h" id="ch-h"></div>
+          <div class="crosshair-v" id="ch-v"></div>
+          <div class="cursor-dot" id="cursor-dot"></div>
+          <div class="start-prompt" id="start-prompt">
+            <p>MOVE CURSOR TO PLAY</p>
+            <span class="sub">// click or hover to activate audio</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Readouts -->
+      <div class="readouts">
+        <div class="readout">
+          <span class="readout-label">// Frequency</span>
+          <span class="readout-value" id="read-freq">---</span>
+        </div>
+        <div class="readout">
+          <span class="readout-label">// Reverb Mix</span>
+          <span class="readout-value" id="read-rev">---</span>
+        </div>
+        <div class="readout">
+          <span class="readout-label">// Waveform</span>
+          <span class="readout-value" id="read-wave">SINE</span>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <span class="footer-logo">DAHLSTROM_</span>
+      <span>SYNTH THEREMIN — WEBAUDIO API</span>
+      <span>EOF</span>
+    </footer>
+
+  </div>
+
+  <script>
+    // ════════════════════════════════
+    // SCROLLING COLUMNS
+    // ════════════════════════════════
+    const leftTerms = [
+      'TIMBRE', 'RESONANCE', 'TREMOLO', 'VIBRATO', 'ARPEGGIO',
+      'CADENCE', 'HARMONY', 'OVERTONE', 'SUSTAIN', 'ATTACK',
+      'RELEASE', 'DECAY', 'ENVELOPE', 'MODULATE', 'OSCILLATE',
+      'LEGATO', 'STACCATO', 'GLISSANDO', 'PORTAMENTO', 'REVERB',
+      'CHORUS', 'PHASER', 'DELAY', 'FILTER', 'CUTOFF',
+      'WAVEFORM', 'FREQUENCY', 'AMPLITUDE', 'PITCH', 'TEMPO',
+      'TIMBRE', 'RESONANCE', 'TREMOLO', 'VIBRATO', 'ARPEGGIO',
+      'CADENCE', 'HARMONY', 'OVERTONE', 'SUSTAIN', 'ATTACK',
+      'RELEASE', 'DECAY', 'ENVELOPE', 'MODULATE', 'OSCILLATE',
+      'LEGATO', 'STACCATO', 'GLISSANDO', 'PORTAMENTO', 'REVERB',
+    ];
+
+    const rightDefs = [
+      'the character of a sound',
+      'reinforcement of frequency',
+      'rapid pitch oscillation',
+      'slight pitch variation',
+      'ascending note sequence',
+      'a harmonic progression',
+      'combination of tones',
+      'a harmonic partial',
+      'held note duration',
+      'initial volume rise',
+      'fade to silence',
+      'volume fall after peak',
+      'shape of a sound',
+      'vary a signal parameter',
+      'generate a periodic wave',
+      'smooth note connection',
+      'short detached notes',
+      'continuous pitch slide',
+      'smooth pitch transition',
+      'echo-like ambience effect',
+      'doubling audio signal',
+      'sweeping phase shift',
+      'time-based echo effect',
+      'frequency band control',
+      'filter threshold point',
+      'shape of a sound wave',
+      'cycles per second',
+      'height of a sound wave',
+      'perceived note highness',
+      'speed of a composition',
+      'the character of a sound',
+      'reinforcement of frequency',
+      'rapid pitch oscillation',
+      'slight pitch variation',
+      'ascending note sequence',
+      'a harmonic progression',
+      'combination of tones',
+      'a harmonic partial',
+      'held note duration',
+      'initial volume rise',
+      'fade to silence',
+      'volume fall after peak',
+      'shape of a sound',
+      'vary a signal parameter',
+      'generate a periodic wave',
+      'smooth note connection',
+      'short detached notes',
+      'continuous pitch slide',
+      'smooth pitch transition',
+      'echo-like ambience effect',
+    ];
+
+    function populateCol(id, words, alignRight) {
+      const col = document.getElementById(id);
+      const doubled = words.concat(words);
+      doubled.forEach(function(w, i) {
+        const span = document.createElement('span');
+        span.textContent = w;
+        if (i % 7 === 0 || i % 12 === 0) span.classList.add('bright');
+        col.appendChild(span);
+      });
+    }
+
+    populateCol('left-col', leftTerms, false);
+    populateCol('right-col', rightDefs, true);
+
+    // ════════════════════════════════
+    // AUDIO ENGINE
+    // ════════════════════════════════
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+    let reverbNode = null;
+    let dryGain = null;
+    let wetGain = null;
+    let analyser = null;
+    let isPlaying = false;
+    let audioStarted = false;
+
+    function createReverb(ctx, duration, decay) {
+      const convolver = ctx.createConvolver();
+      const rate = ctx.sampleRate;
+      const length = rate * duration;
+      const impulse = ctx.createBuffer(2, length, rate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = impulse.getChannelData(ch);
+        for (let i = 0; i < length; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+        }
+      }
+      convolver.buffer = impulse;
+      return convolver;
+    }
+
+    function initAudio() {
+      if (audioStarted) return;
+      audioStarted = true;
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+
+      oscillator = audioCtx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+
+      gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+
+      reverbNode = createReverb(audioCtx, 3, 2);
+      dryGain = audioCtx.createGain();
+      wetGain = audioCtx.createGain();
+      dryGain.gain.setValueAtTime(1, audioCtx.currentTime);
+      wetGain.gain.setValueAtTime(0, audioCtx.currentTime);
+
+      // Signal chain: osc -> gain -> dry/wet split -> analyser -> out
+      oscillator.connect(gainNode);
+      gainNode.connect(dryGain);
+      gainNode.connect(reverbNode);
+      reverbNode.connect(wetGain);
+      dryGain.connect(analyser);
+      wetGain.connect(analyser);
+      analyser.connect(audioCtx.destination);
+
+      oscillator.start();
+    }
+
+    function startSound() {
+      if (!audioStarted) initAudio();
+      if (!isPlaying) {
+        isPlaying = true;
+        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+        gainNode.gain.setTargetAtTime(0.22, audioCtx.currentTime, 0.05);
+        document.body.classList.add('playing');
+        document.getElementById('theremin').classList.add('active');
+        document.getElementById('start-prompt').classList.add('hidden');
+        startViz();
+      }
+    }
+
+    function stopSound() {
+      if (isPlaying && gainNode) {
+        isPlaying = false;
+        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+        gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.08);
+        document.body.classList.remove('playing');
+        document.getElementById('theremin').classList.remove('active');
+        document.getElementById('cursor-dot').style.opacity = '0';
+      }
+    }
+
+    // Map mouse position to frequency (pentatonic scale for musical feel)
+    const pentatonic = [
+      65.41, 73.42, 82.41, 98.00, 110.00,   // C2 scale
+      130.81, 146.83, 164.81, 196.00, 220.00, // C3
+      261.63, 293.66, 329.63, 392.00, 440.00, // C4
+      523.25, 587.33, 659.25, 783.99, 880.00, // C5
+      1046.50, 1174.66, 1318.51, 1567.98, 1760.00 // C6
+    ];
+
+    function getFreq(yRatio) {
+      // y=0 top = high pitch, y=1 bottom = low pitch
+      const idx = Math.floor((1 - yRatio) * (pentatonic.length - 1));
+      const clamped = Math.max(0, Math.min(pentatonic.length - 1, idx));
+      return pentatonic[clamped];
+    }
+
+    function noteNameFromFreq(freq) {
+      const notes = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+      const n = Math.round(12 * Math.log2(freq / 440) + 69);
+      const note = notes[((n % 12) + 12) % 12];
+      const octave = Math.floor(n / 12) - 1;
+      return note + octave;
+    }
+
+    // ── Mouse / touch handling ──
+    const box = document.getElementById('theremin');
+    const dot = document.getElementById('cursor-dot');
+    const chH = document.getElementById('ch-h');
+    const chV = document.getElementById('ch-v');
+    const readFreq = document.getElementById('read-freq');
+    const readRev  = document.getElementById('read-rev');
+
+    function handleMove(x, y) {
+      const rect = box.getBoundingClientRect();
+      const xRatio = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+      const yRatio = Math.max(0, Math.min(1, (y - rect.top)  / rect.height));
+
+      // Update cursor + crosshair
+      const px = xRatio * 100;
+      const py = yRatio * 100;
+      dot.style.left = px + '%';
+      dot.style.top  = py + '%';
+      chH.style.top  = py + '%';
+      chV.style.left = px + '%';
+
+      if (!isPlaying) return;
+
+      // Frequency from Y
+      const freq = getFreq(yRatio);
+      oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.02);
+
+      // Reverb mix from X (left = wet, right = dry)
+      const reverbAmount = 1 - xRatio;
+      wetGain.gain.setTargetAtTime(reverbAmount * 0.8, audioCtx.currentTime, 0.05);
+      dryGain.gain.setTargetAtTime(1 - reverbAmount * 0.5, audioCtx.currentTime, 0.05);
+
+      // Waveform changes subtly with X zone
+      const waveforms = ['sine', 'triangle', 'sawtooth'];
+      const waveIdx = Math.floor(xRatio * 3);
+      const wname = waveforms[Math.min(2, waveIdx)];
+      if (oscillator.type !== wname) {
+        oscillator.type = wname;
+        document.getElementById('read-wave').textContent = wname.toUpperCase();
+      }
+
+      // Readouts
+      readFreq.textContent = noteNameFromFreq(freq) + '  ' + Math.round(freq) + 'Hz';
+      readRev.textContent  = Math.round(reverbAmount * 100) + '%';
+    }
+
+    box.addEventListener('mouseenter', function(e) {
+      startSound();
+    });
+
+    box.addEventListener('mouseleave', function() {
+      stopSound();
+    });
+
+    box.addEventListener('mousemove', function(e) {
+      handleMove(e.clientX, e.clientY);
+    });
+
+    // Touch support
+    box.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      startSound();
+    }, { passive: false });
+
+    box.addEventListener('touchend', function() {
+      stopSound();
+    });
+
+    box.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      const t = e.touches[0];
+      handleMove(t.clientX, t.clientY);
+    }, { passive: false });
+
+    // ════════════════════════════════
+    // VISUALIZER
+    // ════════════════════════════════
+    const canvas = document.getElementById('viz-canvas');
+    const ctx2d  = canvas.getContext('2d');
+    let vizActive = false;
+    let rafId = null;
+
+    function resizeCanvas() {
+      canvas.width  = box.offsetWidth;
+      canvas.height = box.offsetHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function startViz() {
+      if (vizActive) return;
+      vizActive = true;
+      drawViz();
+    }
+
+    function drawViz() {
+      rafId = requestAnimationFrame(drawViz);
+      if (!analyser) return;
+
+      resizeCanvas();
+      const W = canvas.width;
+      const H = canvas.height;
+      const bufLen = analyser.frequencyBinCount;
+      const dataArr = new Uint8Array(bufLen);
+      analyser.getByteTimeDomainData(dataArr);
+
+      ctx2d.clearRect(0, 0, W, H);
+
+      if (!isPlaying) return;
+
+      // Draw waveform
+      ctx2d.beginPath();
+      ctx2d.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx2d.lineWidth = 1.5;
+
+      const sliceW = W / bufLen;
+      let x = 0;
+      for (let i = 0; i < bufLen; i++) {
+        const v = dataArr[i] / 128.0;
+        const y = (v * H) / 2;
+        if (i === 0) ctx2d.moveTo(x, y);
+        else ctx2d.lineTo(x, y);
+        x += sliceW;
+      }
+      ctx2d.stroke();
+
+      // Draw glow version
+      ctx2d.beginPath();
+      ctx2d.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx2d.lineWidth = 6;
+      x = 0;
+      for (let i = 0; i < bufLen; i++) {
+        const v = dataArr[i] / 128.0;
+        const y = (v * H) / 2;
+        if (i === 0) ctx2d.moveTo(x, y);
+        else ctx2d.lineTo(x, y);
+        x += sliceW;
+      }
+      ctx2d.stroke();
+    }
+  </script>
+
+</body>
+</html>
